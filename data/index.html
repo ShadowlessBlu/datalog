@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Datalogger</title>
+    <style>
+        html {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        body {
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition-duration: 0.4s;
+        }
+        .button-data {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .button-delete {
+            background-color: #d9534f;
+            color: white;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            max-width: 900px;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background: #007BFF;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESP32 Datalogger - Manage Data</h1>
+        <button class="button button-data" onclick="fetchData()">Refresh Data</button>
+        <button id="toggleBtn" class="button button-pause" onclick="toggleLogging()">Pause Logging</button>
+        <a href="/view-data" download="data.txt"><button class="button button-data">Download Data</button></a>
+        <button class="button button-delete" onclick="confirmDelete()">Delete Data</button>
+
+        <h2>Logged Data</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Temp (°C)</th>
+                    <th>Rain</th>
+                    <th>Soil Moisture</th>
+                    <th>Light</th>
+                    <th>pH</th>
+                    <th>Water Level</th>
+                    <th>pH Up</th>
+                    <th>pH Down</th>
+                    <th>Stirrer</th>
+                    <th>Pump</th>
+                </tr>
+            </thead>
+            <tbody id="data-table">
+                <tr><td colspan="11">No data available</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function fetchData() {
+            fetch('/view-data')
+            .then(response => response.text())
+            .then(data => {
+                let table = document.getElementById('data-table');
+                table.innerHTML = ""; // Clear table before inserting new data
+
+                let rows = data.trim().split("\n");
+                if (rows.length === 0) {
+                    table.innerHTML = "<tr><td colspan='11'>No data available</td></tr>";
+                    return;
+                }
+
+                rows.forEach(row => {
+                    let cols = row.split(",");
+                    let htmlRow = "<tr>";
+                    cols.forEach(col => {
+                        htmlRow += `<td>${col.trim()}</td>`;
+                    });
+                    htmlRow += "</tr>";
+                    table.innerHTML += htmlRow;
+                });
+            })
+            .catch(error => console.error("Error fetching data:", error));
+        }
+        
+        function toggleLogging() {
+            fetch('/toggle-logging')
+            .then(response => response.text())
+            .then(status => {
+                let button = document.getElementById('toggleBtn');
+                button.innerText = (status === "Logging Enabled") ? "Pause Logging" : "Resume Logging";
+            });
+        }
+
+        function confirmDelete() {
+            if (confirm("Are you sure you want to delete the data?")) {
+                fetch('/delete')
+                .then(() => fetchData()); // Refresh table after deletion
+            }
+        }
+
+        // Auto-refresh table every 500ms
+        setInterval(fetchData, 500);
+        fetchData(); // Load data initially
+    </script>
+</body>
+</html>
